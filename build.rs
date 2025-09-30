@@ -28,6 +28,17 @@ fn main() -> anyhow::Result<()> {
         mpath("proto/jetstream.proto"),
     ];
 
+    // Tell Cargo to rerun this build script if any proto files change
+    for proto_file in &proto_files {
+        println!("cargo:rerun-if-changed={}", proto_file);
+    }
+
+    // Also rerun if build.rs itself changes
+    println!("cargo:rerun-if-changed=build.rs");
+
+    // Optionally, watch the entire proto directory
+    println!("cargo:rerun-if-changed=proto");
+
     // Compile all proto files
     tonic_build
         ::configure()

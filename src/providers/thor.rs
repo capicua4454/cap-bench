@@ -7,6 +7,7 @@ use publisher::{
     Empty,
     StreamResponse,
     SubscribeWalletRequest,
+    SubscribeAccountsRequest,
 };
 use thor_streamer::types::{
     MessageWrapper,
@@ -98,7 +99,10 @@ async fn process_thor_endpoint(
     request.metadata_mut().insert("authorization", grpc_token.parse()?);
     let mut request_slot = Request::new(Empty {});
     request_slot.metadata_mut().insert("authorization", grpc_token.parse()?);
-    let mut request_account = Request::new(Empty {});
+    let mut request_account = Request::new(SubscribeAccountsRequest {
+        account_address: vec![],
+        owner_address: vec![config.account.clone()],
+    });
     request_account.metadata_mut().insert("authorization", grpc_token.parse()?);
 
     let mut stream: Streaming<StreamResponse> = match config.stream_type {
