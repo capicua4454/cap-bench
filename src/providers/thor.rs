@@ -2,21 +2,7 @@ use std::{ collections::HashMap, error::Error, sync::{ Arc, Mutex } };
 
 use futures_util::{ stream::StreamExt, sink::SinkExt };
 use tokio::{ sync::broadcast, task };
-use publisher::{
-    event_publisher_client::EventPublisherClient,
-    Empty,
-    StreamResponse,
-    SubscribeWalletRequest,
-    SubscribeAccountsRequest,
-};
-use thor_streamer::types::{
-    MessageWrapper,
-    SlotStatusEvent,
-    TransactionEvent,
-    TransactionEventWrapper,
-    UpdateAccountEvent,
-    message_wrapper::EventMessage,
-};
+
 use prost::Message;
 use tonic::transport::Uri;
 use tonic::{ Request, Streaming };
@@ -46,6 +32,21 @@ pub mod publisher {
 
     pub const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("proto_descriptors");
 }
+use publisher::{
+    event_publisher_client::EventPublisherClient,
+    //Empty,
+    StreamResponse,
+    SubscribeWalletRequest,
+    SubscribeAccountsRequest,
+};
+use thor_streamer::types::{
+    MessageWrapper,
+    SlotStatusEvent,
+    TransactionEvent,
+    TransactionEventWrapper,
+    SubscribeUpdateAccountInfo,
+    message_wrapper::EventMessage,
+};
 
 pub struct ThorProvider;
 impl GeyserProvider for ThorProvider {
@@ -95,9 +96,9 @@ async fn process_thor_endpoint(
     let mut client = EventPublisherClient::connect(uri).await?;
     log::info!("[{}] Connected successfully", endpoint.name);
 
-    let mut request = Request::new(Empty {});
+    let mut request = Request::new(());
     request.metadata_mut().insert("authorization", grpc_token.parse()?);
-    let mut request_slot = Request::new(Empty {});
+    let mut request_slot = Request::new(());
     request_slot.metadata_mut().insert("authorization", grpc_token.parse()?);
     let mut request_account = Request::new(SubscribeAccountsRequest {
         account_address: vec![],
@@ -124,7 +125,6 @@ async fn process_thor_endpoint(
 
             message = stream.next() => {
                 let now = get_current_timestamp();
-
                 // Stop after end_time
                 if now > end_time {
                     log::info!("[{}] Benchmark duration ended.", endpoint.name);
@@ -132,8 +132,12 @@ async fn process_thor_endpoint(
                 }
 
                 if let Some(Ok(msg)) = message {
-                    if let Ok(message_wrapper) = MessageWrapper::decode(&*msg.data) {
-                                                if let Some(event) = message_wrapper.event_message {
+                    //println!("Received message: {:?}", msg);
+                    match MessageWrapper::decode(&*msg.data) {
+                        Ok(message_wrapper) => {
+
+                        if let Some(event) = message_wrapper.event_message {
+                            
                             match event {
                                 EventMessage::Transaction(transaction_event_wrapper) => {
                                     if let Some(transaction_event) = transaction_event_wrapper.transaction {
@@ -166,7 +170,7 @@ async fn process_thor_endpoint(
                                         }
                                     }
                                 }
-                                EventMessage::Account(update_account_event) => {
+                                EventMessage::AccountUpdate(update_account_event) => {
                                   
                                         let owner = bs58::encode(update_account_event.owner).into_string();
                                         if owner == config.account {
@@ -177,7 +181,7 @@ async fn process_thor_endpoint(
                                             };
                                             write_log_entry(&mut log_file, timestamp, &endpoint.name, &signature)?;
                                             let mut comp = comparator.lock().unwrap();
-                                            let slot = update_account_event.slot;
+                                            let slot = update_account_event.slot.unwrap().slot;
                                             comp.add(
                                                 endpoint.name.clone(),
                                                 TransactionData {
@@ -196,7 +200,16 @@ async fn process_thor_endpoint(
                                 }
                             }
                         }
-                    }
+                    },
+        Err(err) => {
+            // Print the error to understand why decoding fails
+            println!("Failed to decode MessageWrapper: {}", err);
+        }
+    }
+
+
+
+
                 }
             }
             slot_message = slot_stream.next() => {
