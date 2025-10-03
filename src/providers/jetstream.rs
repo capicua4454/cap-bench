@@ -77,8 +77,8 @@ async fn process_jetstream_endpoint(
     > = HashMap::new();
     transactions.insert(String::from("account"), jetstream::SubscribeRequestFilterTransactions {
         account_exclude: vec![],
-        account_include: vec![],
-        account_required: vec![config.account.clone()],
+        account_include: config.accounts.clone(),
+        account_required: vec![],
     });
 
     let request = jetstream::SubscribeRequest { 
@@ -110,12 +110,12 @@ async fn process_jetstream_endpoint(
                 if let Some(Ok(msg)) = message {
                     if let Some(jetstream::subscribe_update::UpdateOneof::Transaction(tx)) = msg.update_oneof {
                         if let Some(tx_info) = &tx.transaction {
-                            let account_keys = tx_info.account_keys
-                                .iter()
-                                .map(|key| bs58::encode(key).into_string())
-                                .collect::<Vec<String>>();
+                            //let account_keys = tx_info.account_keys
+                            //    .iter()
+                            //    .map(|key| bs58::encode(key).into_string())
+                            //    .collect::<Vec<String>>();
 
-                            if account_keys.contains(&config.account) {
+                            //if account_keys.contains(&config.account) {
                                 // Only record transactions after warmup
                                 //if now >= warmup_end_time {
                                     let timestamp = now;
@@ -137,7 +137,7 @@ async fn process_jetstream_endpoint(
 
                                     log::info!("[{:.3}] [{}] {}", timestamp, endpoint.name, signature);
                                 //}
-                            }
+                            //}
                         }
                     }
                 }

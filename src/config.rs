@@ -14,7 +14,8 @@ pub struct ConfigToml {
 pub struct Config {
     pub duration: u64,
     pub stream_type: StreamType,
-    pub account: String,
+    pub accounts: Vec<String>,
+    pub owners: Vec<String>,
     pub commitment: ArgsCommitment,
 }
 
@@ -75,7 +76,8 @@ impl ConfigToml {
             config: Config {
                 duration: 10000,
                 stream_type: StreamType::transactions,
-                account: "pubkey".to_string(),
+                accounts: vec!["pubkey".to_string()],
+                owners: vec!["owner".to_string()],
                 commitment: ArgsCommitment::Processed,
             },
             endpoint: vec![

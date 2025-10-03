@@ -68,6 +68,8 @@ async fn process_yellowstone_endpoint(
     let mut client = GeyserGrpcClient::build_from_shared(endpoint.url)?
         .x_token(Some(endpoint.x_token))?
         .tls_config(ClientTlsConfig::new().with_native_roots())?
+        .send_compressed(tonic::codec::CompressionEncoding::Gzip)
+        .accept_compressed(tonic::codec::CompressionEncoding::Gzip)
         .connect().await?;
 
     log::info!("[{}] Connected successfully", endpoint.name);
@@ -86,14 +88,14 @@ async fn process_yellowstone_endpoint(
         vote: Some(false),
         failed: Some(false),
         signature: None,
-        account_include: vec![config.account.clone()],
+        account_include: config.accounts.clone(),
         account_exclude: vec![],
         account_required: vec![],
     });
 
     accounts.insert("account".to_string(), SubscribeRequestFilterAccounts {
-        account: vec![],
-        owner: vec![config.account.clone()],
+        account: config.accounts.clone(),
+        owner: config.owners.clone(),
         filters: vec![],
         nonempty_txn_signature: None,
     });
@@ -150,14 +152,14 @@ async fn process_yellowstone_endpoint(
                         match msg.update_oneof {
                             Some(UpdateOneof::Transaction(tx_msg)) => {
                                 if let Some(tx) = tx_msg.transaction {
-                                    let accounts = tx.transaction.clone().unwrap().message.unwrap().account_keys
-                                        .iter()
-                                        .map(|key| bs58::encode(key).into_string())
-                                        .collect::<Vec<String>>();
+                                    //let accounts = tx.transaction.clone().unwrap().message.unwrap().account_keys
+                                    //    .iter()
+                                    //    .map(|key| bs58::encode(key).into_string())
+                                    //    .collect::<Vec<String>>();
 
                                         if let Some(meta) = tx.meta.as_ref() {
                                             if meta.err.is_none() {
-                                    if accounts.contains(&config.account) {
+                                    //if accounts.contains(&config.account) {
                                         // Only record transactions after warmup
                                         //if now >= warmup_end_time {
                                             let timestamp = now;
@@ -179,7 +181,7 @@ async fn process_yellowstone_endpoint(
 
                                             log::info!("[{:.3}] [{}] {}", timestamp, endpoint.name, signature);
                                         //}
-                                    }
+                                    //}
                                 }
                                 }
                                 }
@@ -188,7 +190,7 @@ async fn process_yellowstone_endpoint(
                                 if let Some(tx) = tx_msg.account {
                                     let owner = bs58::encode(&tx.owner).into_string();
                                         
-                                    if owner == config.account {
+                                    //if owner == config.account {
                                         // Only record transactions after warmup
                                         //if now >= warmup_end_time {
                                             let timestamp = now;
@@ -210,7 +212,7 @@ async fn process_yellowstone_endpoint(
 
                                             log::info!("[{:.3}] [{}] {}", timestamp, endpoint.name, signature);
                                         //}
-                                    }
+                                    //}
                                
                                 }
                             },

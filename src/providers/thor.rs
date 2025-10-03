@@ -94,6 +94,9 @@ async fn process_thor_endpoint(
     let grpc_token = &endpoint.x_token;
     let uri = grpc_url.parse::<tonic::transport::Uri>()?;
     let mut client = EventPublisherClient::connect(uri).await?;
+    client = client
+        .send_compressed(tonic::codec::CompressionEncoding::Gzip)
+        .accept_compressed(tonic::codec::CompressionEncoding::Gzip);
     log::info!("[{}] Connected successfully", endpoint.name);
 
     let mut request = Request::new(());
@@ -101,8 +104,8 @@ async fn process_thor_endpoint(
     let mut request_slot = Request::new(());
     request_slot.metadata_mut().insert("authorization", grpc_token.parse()?);
     let mut request_account = Request::new(SubscribeAccountsRequest {
-        account_address: vec![],
-        owner_address: vec![config.account.clone()],
+        account_address: config.accounts.clone(),
+        owner_address: config.owners.clone(),
     });
     request_account.metadata_mut().insert("authorization", grpc_token.parse()?);
 
@@ -148,7 +151,7 @@ async fn process_thor_endpoint(
                                                     .map(|key| bs58::encode(key).into_string())
                                                     .collect();
                                                 if let Some(meta) = transaction_event.transaction_status_meta.as_ref() {
-                                                    if !meta.is_status_err && accounts.contains(&config.account) {
+                                                    if !meta.is_status_err && accounts.iter().any(|account| config.accounts.contains(account)) {
                                                         let timestamp = now;
                                                         let signature = bs58::encode(&transaction_event.signature).into_string();
                                                         write_log_entry(&mut log_file, timestamp, &endpoint.name, &signature)?;
@@ -172,8 +175,8 @@ async fn process_thor_endpoint(
                                 }
                                 EventMessage::AccountUpdate(update_account_event) => {
                                   
-                                        let owner = bs58::encode(update_account_event.owner).into_string();
-                                        if owner == config.account {
+                                        //let owner = bs58::encode(update_account_event.owner).into_string();
+                                        //if owner == config.account {
                                             let timestamp = now;
                                             let signature = match update_account_event.txn_signature.as_ref() {
                                                 Some(sig_bytes) => bs58::encode(sig_bytes).into_string(),
@@ -192,7 +195,7 @@ async fn process_thor_endpoint(
                                                 },
                                             );
                                             log::info!("[{:.3}] [{}] {}", timestamp, endpoint.name, signature);
-                                        }
+                                        //}
                                     
                                 }
                                 EventMessage::Slot(slot_status_event) => {

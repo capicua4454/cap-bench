@@ -77,8 +77,8 @@ async fn process_shredstream_endpoint(
     > = HashMap::new();
     transactions.insert(String::from("account"), shredstream::SubscribeRequestFilterTransactions {
         account_exclude: vec![],
-        account_include: vec![],
-        account_required: vec![config.account.clone()],
+        account_include: config.accounts.clone(),
+        account_required: vec![],
     });
 
     let request = shredstream::SubscribeTransactionsRequest { transactions };
@@ -105,12 +105,12 @@ async fn process_shredstream_endpoint(
 
                 if let Some(Ok(msg)) = message {
                     if let Some(tx) = msg.transaction {
-                        let accounts = tx.transaction.clone().unwrap().message.unwrap().account_keys
-                            .iter()
-                            .map(|key| bs58::encode(key).into_string())
-                            .collect::<Vec<String>>();
+                        //let accounts = tx.transaction.clone().unwrap().message.unwrap().account_keys
+                        //    .iter()
+                        //    .map(|key| bs58::encode(key).into_string())
+                        //    .collect::<Vec<String>>();
 
-                        if accounts.contains(&config.account) {
+                        //if accounts.contains(&config.account) {
                             // Only record transactions after warmup
                             //if now >= warmup_end_time {
                                 let timestamp = now;
@@ -132,7 +132,7 @@ async fn process_shredstream_endpoint(
 
                                 log::info!("[{:.3}] [{}] {}", timestamp, endpoint.name, signature);
                             //}
-                        }
+                        //}
                     }
                 }
             }

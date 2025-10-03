@@ -81,12 +81,12 @@ async fn process_arpc_endpoint(
     let mut client = ArpcServiceClient::connect(endpoint.url).await?;
     log::info!("[{}] Connected successfully", endpoint.name);
 
-    fn reqstream(account: String) -> impl Stream<Item = ArpcSubscribeRequest> {
+    fn reqstream(accounts: Vec<String>) -> impl Stream<Item = ArpcSubscribeRequest> {
         let mut transactions = HashMap::new();
         transactions.insert(
             String::from("account"),
             SubscribeRequestFilterTransactions {
-                account_include: vec![account],
+                account_include: accounts,
                 account_exclude: vec![],
                 account_required: vec![],
             },
@@ -97,7 +97,7 @@ async fn process_arpc_endpoint(
         }])
     }
 
-    let in_stream = reqstream(config.account.clone());
+    let in_stream = reqstream(config.accounts.clone());
     let mut stream = client.subscribe(in_stream).await?.into_inner();
 
     'ploop: loop {
@@ -118,12 +118,12 @@ async fn process_arpc_endpoint(
 
                 if let Some(Ok(msg)) = message {
                     if let Some(tx) = msg.transaction {
-                        let accounts = tx.account_keys
-                            .iter()
-                            .map(|key| bs58::encode(key).into_string())
-                            .collect::<Vec<String>>();
+                        //let accounts = tx.account_keys
+                        //    .iter()
+                        //    .map(|key| bs58::encode(key).into_string())
+                        //    .collect::<Vec<String>>();
 
-                        if accounts.contains(&config.account) {
+                        //if accounts.contains(&config.account) {
                             // Only record transactions after warmup
                             //if now >= warmup_end_time {
                                 let timestamp = now;
@@ -145,7 +145,7 @@ async fn process_arpc_endpoint(
 
                                 log::info!("[{:.3}] [{}] {}", timestamp, endpoint.name, signature);
                             //}
-                        }
+                        //}
                     }
                 }
             }
